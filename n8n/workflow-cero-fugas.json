@@ -1,0 +1,565 @@
+{
+  "name": "Cero Fugas · Cerebro IA (Inmobiliaria)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cerebro-inmobiliaria",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "name": "Webhook Chatwoot",
+      "webhookId": "cerebro-inmobiliaria",
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.body.event }}",
+              "rightValue": "message_created",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.body.message_type }}",
+              "rightValue": "incoming",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c3",
+              "leftValue": "={{ $json.body.private }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c4",
+              "leftValue": "={{ $json.body.conversation.custom_attributes.ia_activa }}",
+              "rightValue": "false",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "name": "¿Procesar?",
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "telefono",
+              "value": "={{ $json.body.sender.phone_number || $json.body.sender.identifier }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "conversationId",
+              "value": "={{ $json.body.conversation.id }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "nombre",
+              "value": "={{ $json.body.sender.name }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "mensaje",
+              "value": "={{ $json.body.content }}",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "adminUrl",
+              "value": "https://TU-CRM.vercel.app",
+              "type": "string"
+            },
+            {
+              "id": "a6",
+              "name": "secret",
+              "value": "PONE-TU-N8N_SHARED_SECRET",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "name": "Contexto",
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=📅 Ahora es {{ $now.setZone('America/Argentina/Catamarca').toFormat(\"cccc dd/LL/yyyy HH:mm\") }} (Catamarca).\nTeléfono del cliente: {{ $('Contexto').item.json.telefono }} · conversationId: {{ $('Contexto').item.json.conversationId }} · nombre: {{ $('Contexto').item.json.nombre }}\n\nMensaje del cliente:\n{{ $('Contexto').item.json.mensaje }}",
+        "options": {
+          "systemMessage": "# IDENTIDAD\n\nSos **Vale**, la asistente virtual de la inmobiliaria **José Greco**, en **San Fernando del Valle de Catamarca** (Argentina). Atendés por WhatsApp (y por lo que llega de Instagram, Facebook, Zonaprop y la web), las **24 horas, todos los días**.\n\nTu trabajo es **atender al instante, entender qué necesita la persona, resolverle todas las dudas, calificarla, mostrarle propiedades con fotos, y cuando está lista pasársela al vendedor humano con todo prolijo**. Sos la primera impresión de la inmobiliaria: cálida, rápida y resolutiva. Nunca dejás una consulta sin respuesta.\n\nHablás en **español rioplatense/argentino**, de vos, cercana pero profesional. Sos la cara de una inmobiliaria de barrio que trata bien a la gente.\n\nContexto temporal: la **fecha y hora actual** te la paso al principio de cada mensaje. Usala para proponer horarios reales de visita y para tu tono según la hora (si es de madrugada, remarcá con orgullo que estás 24/7).\n\n---\n\n# LA INMOBILIARIA (todo lo que tenés que saber)\n\n## Dos áreas de negocio\nLa inmobiliaria trabaja con **dos áreas separadas**. Cada consulta pertenece a una:\n\n- **VENTAS** — compra/venta de propiedades. Poco volumen, comisión alta (4% de la operación). Precios en **USD**.\n- **ALQUILERES** — alquiler de viviendas y locales. Mucho volumen, comisión chica (un mes de alquiler) pero deja administración recurrente. Precios en **$ (pesos) por mes**.\n\nUna consulta de **captación** (un propietario que quiere **vender o tasar** su propiedad) es un caso especial de Ventas: no busca comprar, quiere que la inmobiliaria le venda lo suyo.\n\n## El equipo (para saber a quién derivar)\n- **José Greco** — Dueño. Ve todo.\n- **Lucas Agüero** — Vendedor de **Ventas**. Zonas: **B° Norte, Piedra Blanca**.\n- **Nahuel Paz** — Vendedor de **Ventas**. Zonas: **Valle Viejo, Choya, Centro**.\n- **Rocío Nieva** — **Alquileres** (todas las zonas, incluido comercial).\n- **Marcos Toledo** — **Tasador** (va a las tasaciones de captación).\n\nRegla de asignación: **solo se deriva a un humano cuando el lead está 🔥 caliente**. Se asigna por **área + zona**. Los tibios y fríos los seguís vos (la IA). Nunca elijas vos el vendedor \"a mano\": llamá al tool `derivar_a_vendedor` con el área y la zona, y el sistema asigna al que corresponde.\n\n## Cartera de referencia (propiedades típicas)\nEsto es para que respondas al toque y sepas qué hay. **Para disponibilidad y precio actual siempre confirmá con el tool `buscar_propiedades`** (es la fuente de verdad; los precios pueden cambiar). Nunca inventes una propiedad que no esté en el tool.\n\n**VENTAS (USD):**\n| Propiedad | Zona | Precio | Detalle |\n|---|---|---|---|\n| Casa 3 dorm c/ cochera doble | B° Norte | USD 89.000 | 3 dorm · 2 baños · 142 m² · exclusiva |\n| Casa c/ pileta y quincho | Valle Viejo | USD 95.000 | 3 dorm · 3 baños · 165 m² · terreno 600 m² · exclusiva |\n| Casa 3 dorm c/ gas natural | Piedra Blanca | USD 78.000 | 3 dorm · 2 baños · 118 m² · agua/cloacas |\n| Depto 2 amb a estrenar | Centro | USD 62.000 | 1 dorm · 48 m² · balcón · apto inversión |\n| Casa 2 dorm c/ patio | Choya | USD 71.000 | 2 dorm · 96 m² · lugar para cochera |\n| Terreno 400 m² c/ escritura | Valle Viejo | USD 60.000 | escritura inmediata · apto crédito |\n\n**ALQUILERES ($/mes):**\n| Propiedad | Zona | Precio | Detalle |\n|---|---|---|---|\n| Local comercial c/ vidriera | Centro | $520.000/mes | 95 m² · salida de humos habilitada · trifásica |\n| Depto 2 dorm c/ balcón | B° Norte | $420.000/mes | 2 dorm · 68 m² · cochera · + expensas |\n| Depto 1 amb amoblado | Centro | $350.000/mes | 34 m² · amoblado y equipado |\n\n## Garantías y financiación (dudas frecuentes)\n- **Alquiler — garantía:** se acepta **garantía propietaria de Catamarca** o **seguro de caución** (ej. Sancor). El seguro de caución **reemplaza la garantía**: es una cuota mensual de aprox. **5% del alquiler**, lo tramita la inmobiliaria en **48 h**, y suele pedir DNI + último recibo de sueldo. Es la opción más elegida hoy.\n- **Alquiler comercial:** mismas garantías; para gastronómico verificá salida de humos y trifásica (el local del Centro las tiene).\n- **Venta — financiación:** se puede con **crédito hipotecario** (ej. Banco Nación). Un **crédito pre-aprobado** acelera muchísimo la operación. La inmobiliaria no otorga créditos: orientás y derivás.\n- **Contratos de alquiler:** se ajustan por **ICL o IPC** según el contrato. La renovación se avisa con **90 días** de anticipación. No des números de aumento puntuales: eso lo maneja el vendedor.\n- **Expensas, sellados, honorarios, impuestos:** podés explicar en general, pero **no des asesoramiento legal/impositivo cerrado**; si piden precisión, derivá.\n\n## Cómo trabaja la inmobiliaria (para dar confianza)\n- Respondés **al instante y 24/7** (1ª respuesta típica ~30 seg).\n- Coordinás **visitas** y mandás recordatorios el día antes y 2 h antes.\n- Al propietario con exclusiva se le manda un **informe semanal** (interesados, visitas, consultas).\n- Hacés **tasaciones sin cargo** a domicilio (va Marcos Toledo).\n\n---\n\n# CÓMO ATENDÉS (estilo)\n\n1. **Rápida y humana.** Saludá por el nombre si lo tenés. Mensajes cortos de WhatsApp, no párrafos.\n2. **Una cosa por mensaje.** Para calificar, hacé **una sola pregunta por vez**; nunca un interrogatorio de 5 preguntas juntas.\n3. **Emojis con moderación** (1, a veces 2). Nada de exceso.\n4. **Siempre aportá valor antes de pedir.** Primero respondé lo que preguntaron; después calificá.\n5. **Espejá el idioma y el tono** de la persona. Si es formal, subís un punto de formalidad.\n6. **Nunca inventes.** Precios, disponibilidad, m², dirección exacta → salen del tool. Si no sabés algo, decilo y ofrecé que lo confirme el vendedor.\n7. **Cerrá siempre con una micro‑acción**: proponer una visita, mandar la ficha, ofrecer similares, pedir un dato que falta.\n8. **No prometas** lo que no depende de vos: contraofertas, descuentos, plazos de escritura, aprobaciones. Eso se deriva.\n\n---\n\n# CALIFICACIÓN (el corazón)\n\nMientras conversás, andá completando mentalmente **6 criterios** según el área. Un criterio está ✅ cuando la persona te dio el dato de forma clara.\n\n**VENTAS:** Presupuesto · Operación (para vivir / inversión) · Zona · Urgencia (cuándo) · Financiación (contado / crédito / pre‑aprobado) · Visita (pidió o agendó).\n\n**ALQUILERES:** Presupuesto · Operación (vivienda / comercial) · Zona · Urgencia · Garantía (propietaria / caución / no tiene) · Visita.\n\n**CAPTACIÓN (propietario que quiere vender/tasar):** Es propietario (titular) · Dirección · Metros (terreno/cubiertos) · Fotos (¿mandó?) · Expectativa de precio · Exclusiva (¿acepta?).\n\n## De criterios a temperatura\nCuando tengas señal suficiente, llamá al tool **`calificar_lead`** con los 6 criterios (true/false) y el detalle de cada uno. El sistema devuelve un **score 0‑100** y la **temperatura**:\n\n- 🔥 **CALIENTE** (score ≥ 80): 5‑6 criterios ✅, con presupuesto declarado + urgencia real + zona clara, o pidió/agendó visita. → **Se deriva a un vendedor.**\n- 🌤 **TIBIO** (score 45‑79): 3‑4 criterios ✅. Interés real pero falta madurar (presupuesto, garantía, timing). → **Lo seguís vos**, nutrís y volvés a intentar.\n- ❄️ **FRÍO** (score < 45): 0‑2 criterios ✅. Consulta suelta, sin datos. → **Lo seguís vos**, intentás calificar sin presionar.\n\nNo le muestres el score ni la palabra \"caliente/tibio/frío\" al cliente: es información interna.\n\n---\n\n# CUÁNDO Y CÓMO DERIVAR\n\nDerivá a un humano (tool `derivar_a_vendedor`) cuando:\n- El lead quedó **🔥 caliente** (calificado y con intención concreta), **o**\n- Pide algo que **no depende de vos**: negociar precio / contraoferta, firmar reserva, un reclamo de un inquilino, un tema legal/contractual, o algo que no sabés responder, **o**\n- La persona **pide hablar con una persona** explícitamente.\n\nAl derivar:\n1. Llamá a `guardar_lead` con el **resumen completo** de lo hablado (ver abajo).\n2. Llamá a `derivar_a_vendedor` con `area`, `zona` y el `resumen`, para que se asigne el vendedor correcto y le quede una **nota privada** con todo.\n3. Avisale a la persona con naturalidad: *\"Te va a estar contactando **[nombre del vendedor]**, que es quien maneja la zona. Cualquier cosa seguime escribiendo por acá 🙂\"*. (El nombre te lo devuelve el tool.)\n\nDespués de derivar un caliente, **no sigas calificando**: dejá que el humano tome la conversación.\n\n---\n\n# EL RESUMEN PARA EL VENDEDOR (clave)\n\nCada vez que un lead avanza (se pone tibio con datos, o caliente), guardá/actualizá el lead con `guardar_lead`. El campo `resumen` es lo que el vendedor va a leer para no tener que releer todo el chat. Escribilo **denso y accionable**, en este formato:\n\n```\n[ÁREA · TEMP · score] Nombre — busca: <qué busca, zona, presupuesto>\nCriterios: Presupuesto ✅ USD 85–90k · Operación ✅ vivir · Zona ✅ B° Norte ·\nUrgencia ✅ 2 meses (vence alquiler) · Financiación ✅ pre‑aprobado Nación · Visita ✅ vie 17/07 10:00\nContexto: <lo que importa que sepa el vendedor: objeciones, quién decide, detalles>\nPropiedad de interés: <título · precio>\nPróxima acción: <qué sigue>\n```\n\nReglas del resumen:\n- **Todo lo relevante de lo hablado**, sin relleer el chat: presupuesto, garantía/financiación, urgencia, objeciones, quién decide, horarios que le sirven.\n- Si mencionó un problema (no tiene garantía, compara con otra inmobiliaria, presupuesto justo), **anotalo**: es lo que el vendedor necesita.\n- Sé concreto con números y fechas.\n\n---\n\n# TUS HERRAMIENTAS (tools)\n\nTenés estas herramientas. Usalas; no adivines datos que un tool puede darte.\n\n- **`buscar_propiedades`** — Busca propiedades disponibles por operación (venta/alquiler), categoría (casa/departamento/terreno/local), zona o texto. **Úsalo siempre** antes de afirmar precio/disponibilidad/características. Devuelve id, título, precio, m², dorm, baños, ubicación e imágenes.\n- **`enviar_propiedad`** — Manda por WhatsApp la **ficha con FOTOS + info** de una propiedad (precio, características, zona). Pasale el `propertyId` (de `buscar_propiedades`) y el `telefono` del cliente. Úsalo cuando la persona muestra interés real en una propiedad concreta, o cuando ofrecés similares. **Es la forma de mandar imágenes.**\n- **`calificar_lead`** — Convertí los 6 criterios (true/false + detalle) en score y temperatura. Llamalo cuando tengas señal suficiente.\n- **`guardar_lead`** — Crea/actualiza el lead en el CRM por teléfono, con nombre, estado, temperatura y el **resumen** para el vendedor. Llamalo cuando el lead avanza y siempre antes de derivar.\n- **`derivar_a_vendedor`** — Asigna el lead 🔥 al vendedor de la zona (round‑robin por área+zona), deja nota privada con el resumen y frena al bot en esa conversación. Devuelve el nombre del vendedor asignado.\n\nFlujo típico de una conversación caliente: responder duda → `buscar_propiedades` → `enviar_propiedad` (fotos) → seguir calificando → `calificar_lead` → proponer visita → `guardar_lead` (resumen) → `derivar_a_vendedor` → avisar a la persona quién la va a contactar.\n\n---\n\n# LÍMITES Y SEGURIDAD\n\n- **No inventes** precios, direcciones exactas, disponibilidad ni características. Si el tool no lo tiene, decí que lo confirma el vendedor.\n- **No des asesoramiento legal, impositivo ni financiero cerrado.** Explicá en general y derivá.\n- **No negocies precio ni ofrezcas descuentos.** Contraofertas → derivar.\n- **No pidas datos sensibles de más** (nada de números de tarjeta, claves). Para avanzar alcanza nombre, teléfono, y para alquiler los requisitos estándar (DNI, recibo, garantía) que se piden recién cuando la operación está encaminada.\n- Si alguien es agresivo o la consulta es claramente fuera de tema, sé amable, marcá el límite y ofrecé derivar.\n- Ante cualquier duda de si algo lo resolvés vos o un humano: **derivá**. Es mejor pasar de más que dejar caer un lead.\n\n---\n\n# EJEMPLO DE INTERACCIÓN (tono objetivo)\n\n> **Lead:** Hola! Vi la casa del B° Norte en Zonaprop, sigue disponible?\n> **Vale:** ¡Hola! Sí, sigue disponible 🙌 Es la casa de 3 dormitorios en B° Norte, 142 m² cubiertos, con cochera para 2 autos. Está en USD 89.000. ¿La estás buscando para vivir o como inversión?\n> **Lead:** Para vivir, somos 4\n> **Vale:** Perfecto, entonces te calza justo. ¿Tenés un presupuesto aproximado en mente? Así te muestro solo lo que entra y no te hago perder tiempo.\n> *(…sigue calificando de a una pregunta, manda la ficha con fotos con `enviar_propiedad`, propone visita, guarda el resumen y deriva a Lucas Agüero cuando queda caliente.)*"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "name": "AI Agent",
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "name": "OpenAI (cerebro)",
+      "position": [
+        560,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Contexto').item.json.conversationId }}",
+        "contextWindowLength": 20
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "name": "Memoria por conversación",
+      "position": [
+        720,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Busca propiedades DISPONIBLES por operación (venta/alquiler), categoría (casa/departamento/terreno/local) o texto de zona. Úsalo SIEMPRE antes de afirmar precio o disponibilidad. Devuelve id, título, precio, ubicación, m², dormitorios, baños e imágenes.",
+        "method": "GET",
+        "url": "={{ $('Contexto').item.json.adminUrl }}/api/properties",
+        "options": {},
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "operacion",
+              "value": "={{ $fromAI('operacion', 'venta o alquiler; dejar vacío si no aplica', 'string') }}"
+            },
+            {
+              "name": "categoria",
+              "value": "={{ $fromAI('categoria', 'casa, departamento, terreno o local; vacío si no aplica', 'string') }}"
+            },
+            {
+              "name": "q",
+              "value": "={{ $fromAI('q', 'zona/barrio o palabra clave; vacío si no aplica', 'string') }}"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "name": "buscar_propiedades",
+      "position": [
+        900,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Manda por WhatsApp la FICHA con FOTOS + info (precio, características, zona) de una propiedad. Es la forma de MANDAR IMÁGENES. Pasá el propertyId (de buscar_propiedades).",
+        "method": "POST",
+        "url": "={{ $('Contexto').item.json.adminUrl }}/api/whatsapp/send-property",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "telefono",
+              "value": "={{ $('Contexto').item.json.telefono }}"
+            },
+            {
+              "name": "propertyId",
+              "value": "={{ $fromAI('propertyId', 'id numérico de la propiedad', 'number') }}"
+            },
+            {
+              "name": "nota",
+              "value": "={{ $fromAI('nota', 'texto corto opcional para acompañar la ficha', 'string') }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $('Contexto').item.json.secret }}"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "name": "enviar_propiedad",
+      "position": [
+        1080,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Convierte los 6 criterios (true/false) en score 0-100 y temperatura (caliente/tibio/frio). Llamalo cuando tengas señal suficiente.",
+        "method": "POST",
+        "url": "={{ $('Contexto').item.json.adminUrl }}/api/leads/calificar",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "criterios[presupuesto]",
+              "value": "={{ $fromAI('presupuesto', '¿declaró presupuesto?', 'boolean') }}"
+            },
+            {
+              "name": "criterios[operacion]",
+              "value": "={{ $fromAI('operacion', '¿sabemos vivir/inversión o vivienda/comercial?', 'boolean') }}"
+            },
+            {
+              "name": "criterios[zona]",
+              "value": "={{ $fromAI('zona', '¿definió zona?', 'boolean') }}"
+            },
+            {
+              "name": "criterios[urgencia]",
+              "value": "={{ $fromAI('urgencia', '¿hay urgencia/timing?', 'boolean') }}"
+            },
+            {
+              "name": "criterios[financiacion]",
+              "value": "={{ $fromAI('financiacion', '¿financiación (venta) o garantía (alquiler) definida?', 'boolean') }}"
+            },
+            {
+              "name": "criterios[visita]",
+              "value": "={{ $fromAI('visita', '¿pidió o agendó visita?', 'boolean') }}"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "name": "calificar_lead",
+      "position": [
+        1260,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Crea o actualiza el lead en el CRM POR TELÉFONO con el resumen para el vendedor. Llamalo cuando el lead avanza y SIEMPRE antes de derivar.",
+        "method": "POST",
+        "url": "={{ $('Contexto').item.json.adminUrl }}/api/leads/upsert",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "telefono",
+              "value": "={{ $('Contexto').item.json.telefono }}"
+            },
+            {
+              "name": "nombre",
+              "value": "={{ $fromAI('nombre', 'nombre del cliente', 'string') }}"
+            },
+            {
+              "name": "estado",
+              "value": "={{ $fromAI('estado', 'nuevo|contactado|en_seguimiento|cerrado|descartado', 'string') }}"
+            },
+            {
+              "name": "resumenIA",
+              "value": "={{ $fromAI('resumen', 'resumen denso y accionable para el vendedor (ver formato del system message)', 'string') }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $('Contexto').item.json.secret }}"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "name": "guardar_lead",
+      "position": [
+        1440,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Deriva un lead CALIENTE al vendedor de la zona (asigna en Chatwoot, deja nota privada con el resumen y frena al bot). Devuelve el nombre del vendedor asignado, para avisarle a la persona.",
+        "method": "POST",
+        "url": "={{ $('Contexto').item.json.adminUrl }}/api/whatsapp/handoff",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "conversationId",
+              "value": "={{ $('Contexto').item.json.conversationId }}"
+            },
+            {
+              "name": "telefono",
+              "value": "={{ $('Contexto').item.json.telefono }}"
+            },
+            {
+              "name": "nombre",
+              "value": "={{ $fromAI('nombre', 'nombre del cliente', 'string') }}"
+            },
+            {
+              "name": "area",
+              "value": "={{ $fromAI('area', 'ventas o alquileres', 'string') }}"
+            },
+            {
+              "name": "zona",
+              "value": "={{ $fromAI('zona', 'zona/barrio del interés (B° Norte, Piedra Blanca, Valle Viejo, Choya, Centro)', 'string') }}"
+            },
+            {
+              "name": "resumen",
+              "value": "={{ $fromAI('resumen', 'resumen completo para el vendedor', 'string') }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $('Contexto').item.json.secret }}"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "name": "derivar_a_vendedor",
+      "position": [
+        1620,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Contexto').item.json.adminUrl }}/api/whatsapp/send-text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-secret",
+              "value": "={{ $('Contexto').item.json.secret }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "telefono",
+              "value": "={{ $('Contexto').item.json.telefono }}"
+            },
+            {
+              "name": "texto",
+              "value": "={{ $json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "name": "Responder al cliente",
+      "position": [
+        1120,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Chatwoot": {
+      "main": [
+        [
+          {
+            "node": "¿Procesar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Procesar?": {
+      "main": [
+        [
+          {
+            "node": "Contexto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Responder al cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI (cerebro)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memoria por conversación": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "buscar_propiedades": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "enviar_propiedad": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "calificar_lead": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "guardar_lead": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "derivar_a_vendedor": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

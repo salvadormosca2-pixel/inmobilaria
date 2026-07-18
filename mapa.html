@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mapa de Propiedades | Jose Greco Inmobiliaria</title>
+<meta name="description" content="Explorá en el mapa todas las propiedades de Jose Greco en Catamarca. Elegí tu zona, mirá fotos e información, y consultá por WhatsApp.">
+<meta name="theme-color" content="#09090B">
+<meta property="og:title" content="Mapa de Propiedades | Jose Greco Inmobiliaria">
+<meta property="og:description" content="Elegí tu zona en el mapa y encontrá tu próxima propiedad en Catamarca.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◆</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Outfit:wght@200;300;400;500;600&family=Space+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#09090B;
+--surface:#141418;
+--surface2:#1A1A1F;
+--border:#23232A;
+--border-hover:#33333A;
+--gold:#B5A48B;
+--gold-hover:#D4C4A8;
+--gold-dim:rgba(181,164,139,.1);
+--gold-border:rgba(181,164,139,.22);
+--white:#E8E4DF;
+--muted:#807C75;
+--green:#34C759;
+--blue:#64B5F6;
+--ease:cubic-bezier(0.16,1,0.3,1);
+--r-sm:8px;--r-md:14px;--r-lg:22px;
+--header-h:66px;
+--panel-w:400px;
+}
+html{font-size:16px}
+body{font-family:'Outfit',system-ui,sans-serif;background:var(--bg);color:var(--white);line-height:1.6;font-weight:300;overflow:hidden;height:100vh;height:100dvh}
+h1,h2,h3,.font-display{font-family:'Cormorant Garamond',Georgia,serif}
+.mono{font-family:'Space Mono',monospace}
+a{text-decoration:none;color:inherit}
+button{cursor:pointer;font-family:inherit;border:none;background:none;color:inherit}
+ul{list-style:none}
+img{display:block;width:100%;height:100%;object-fit:cover}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-hover);border-radius:3px}
+
+/* ── HEADER ── */
+header{position:fixed;top:0;left:0;right:0;height:var(--header-h);z-index:1200;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(16px,4vw,32px);background:rgba(9,9,11,.9);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:baseline;gap:12px}
+.brand .logo{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;letter-spacing:6px;color:var(--gold)}
+.brand .logo b{font-weight:600}
+.brand .tag{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.header-actions{display:flex;align-items:center;gap:12px}
+.back-link{display:inline-flex;align-items:center;gap:7px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:9px 16px;border:1px solid var(--border);border-radius:var(--r-sm);transition:all .3s var(--ease)}
+.back-link:hover{border-color:var(--gold-border);color:var(--gold)}
+.back-link svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.8;fill:none}
+.wa-header{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:1px;text-transform:uppercase;font-weight:500;color:var(--bg);background:var(--gold);padding:10px 18px;border-radius:var(--r-sm);transition:all .3s var(--ease)}
+.wa-header:hover{background:var(--gold-hover);transform:translateY(-1px)}
+.wa-header svg{width:15px;height:15px;fill:currentColor}
+
+/* ── LAYOUT ── */
+.layout{display:flex;height:100vh;height:100dvh;padding-top:var(--header-h)}
+.panel{width:var(--panel-w);flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:calc(100vh - var(--header-h));height:calc(100dvh - var(--header-h))}
+.map-wrap{flex:1;position:relative;min-width:0}
+#map{position:absolute;inset:0;background:#0d0d12}
+
+/* ── PANEL INTRO ── */
+.panel-intro{padding:22px 22px 16px;border-bottom:1px solid var(--border)}
+.panel-intro h1{font-size:27px;font-weight:300;line-height:1.12;letter-spacing:.5px}
+.panel-intro h1 em{font-style:italic;color:var(--gold)}
+.panel-intro p{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.55}
+
+/* ── FILTERS ── */
+.filters{padding:16px 22px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:14px}
+.filter-block .filter-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;display:block}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{font-size:12px;padding:7px 13px;border:1px solid var(--border);border-radius:100px;color:var(--muted);transition:all .25s var(--ease);white-space:nowrap}
+.chip:hover{border-color:var(--border-hover);color:var(--white)}
+.chip.active{background:var(--gold);border-color:var(--gold);color:var(--bg);font-weight:500}
+.search-box{display:flex;align-items:center;gap:9px;padding:11px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);transition:border-color .3s}
+.search-box:focus-within{border-color:var(--gold-border)}
+.search-box svg{width:16px;height:16px;stroke:var(--muted);stroke-width:2;fill:none;flex-shrink:0}
+.search-box input{flex:1;background:none;border:none;color:var(--white);font-size:13.5px;outline:none}
+.search-box input::placeholder{color:var(--muted)}
+
+/* ── RESULT BAR ── */
+.result-bar{padding:13px 22px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.result-count{font-size:12.5px;color:var(--muted)}
+.result-count b{color:var(--white);font-weight:500}
+.reset-btn{font-size:11.5px;letter-spacing:.5px;color:var(--gold);opacity:0;pointer-events:none;transition:opacity .25s}
+.reset-btn.show{opacity:1;pointer-events:auto}
+.reset-btn:hover{color:var(--gold-hover)}
+
+/* ── LIST ── */
+.list{flex:1;overflow-y:auto;padding:14px 16px 24px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;cursor:pointer;transition:border-color .3s var(--ease),transform .3s var(--ease);display:flex;flex-direction:column}
+.card:hover,.card.hl{border-color:var(--gold-border);transform:translateY(-2px)}
+.card-img{position:relative;aspect-ratio:16/10;background:var(--border)}
+.card-img img{transition:transform .6s var(--ease)}
+.card:hover .card-img img{transform:scale(1.05)}
+.card-badges{position:absolute;top:10px;left:10px;display:flex;gap:6px}
+.badge{font-size:10px;letter-spacing:.8px;text-transform:uppercase;font-weight:500;padding:4px 9px;border-radius:5px;backdrop-filter:blur(6px)}
+.badge.op-venta{background:rgba(181,164,139,.9);color:var(--bg)}
+.badge.op-alquiler{background:rgba(52,199,89,.9);color:#04270f}
+.badge.excl{background:rgba(9,9,11,.72);color:var(--gold);border:1px solid var(--gold-border)}
+.card-price{position:absolute;bottom:10px;right:10px;font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--white);background:rgba(9,9,11,.72);backdrop-filter:blur(6px);padding:3px 12px;border-radius:6px;font-weight:400}
+.card-price small{font-size:11px;color:var(--muted);font-family:'Outfit',sans-serif}
+.card-body{padding:13px 15px 15px}
+.card-zone{font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:5px}
+.card-title{font-size:15px;font-weight:400;color:var(--white);line-height:1.3}
+.card-specs{display:flex;gap:14px;margin-top:11px;padding-top:11px;border-top:1px solid var(--border)}
+.spec{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.spec svg{width:15px;height:15px;stroke:var(--gold);stroke-width:1.6;fill:none;opacity:.85}
+.list-empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.list-empty .em-icon{font-size:34px;opacity:.4;margin-bottom:12px}
+.list-empty p{font-size:13.5px}
+.list-empty .sub{font-size:12px;margin-top:6px;opacity:.7}
+
+/* ── LEAFLET MARKERS ── */
+.leaflet-container{background:#0d0d12;font-family:'Outfit',sans-serif}
+.leaflet-control-attribution{background:rgba(9,9,11,.7)!important;color:var(--muted)!important;font-size:10px}
+.leaflet-control-attribution a{color:var(--gold)!important}
+.leaflet-bar a{background:var(--surface)!important;color:var(--white)!important;border-color:var(--border)!important}
+.leaflet-bar a:hover{background:var(--surface2)!important}
+.pin{display:inline-block;transform:translate(-50%,-100%);cursor:pointer;will-change:transform}
+.pin-tag{display:inline-block;position:relative;font-family:'Space Mono',monospace;font-size:12px;font-weight:400;color:var(--bg);background:var(--gold);padding:5px 10px;border-radius:7px;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.5);transition:all .2s var(--ease);border:1.5px solid var(--gold)}
+.pin-tag::after{content:'';position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid var(--gold)}
+.pin:hover .pin-tag,.pin.active .pin-tag{background:var(--gold-hover);border-color:var(--white);transform:scale(1.08);z-index:5}
+.pin.active .pin-tag{background:var(--white);color:var(--bg)}
+.pin.active .pin-tag::after{border-top-color:var(--white)}
+.pin.op-alquiler .pin-tag{background:var(--green);border-color:var(--green);color:#04270f}
+.pin.op-alquiler .pin-tag::after{border-top-color:var(--green)}
+.pin.op-alquiler.active .pin-tag{background:#eafff1;border-color:#fff}
+.pin.op-alquiler.active .pin-tag::after{border-top-color:#eafff1}
+
+/* ── DETAIL PANEL ── */
+.detail{position:fixed;top:var(--header-h);right:0;bottom:0;width:440px;max-width:100%;background:var(--surface);border-left:1px solid var(--border);z-index:1100;transform:translateX(100%);transition:transform .45s var(--ease);display:flex;flex-direction:column;box-shadow:-20px 0 60px rgba(0,0,0,.5)}
+.detail.open{transform:translateX(0)}
+.detail-close{position:absolute;top:16px;right:16px;z-index:3;width:38px;height:38px;border-radius:50%;background:rgba(9,9,11,.6);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;transition:all .3s;border:1px solid var(--border)}
+.detail-close:hover{background:var(--bg);border-color:var(--gold-border)}
+.detail-close svg{width:17px;height:17px;stroke:var(--white);stroke-width:2;fill:none}
+.detail-scroll{flex:1;overflow-y:auto}
+.detail-hero{position:relative;aspect-ratio:16/11;background:var(--border)}
+.detail-hero::after{content:'';position:absolute;inset:0;background:linear-gradient(to top,rgba(20,20,24,.9),transparent 45%)}
+.detail-hero-badges{position:absolute;top:16px;left:16px;display:flex;gap:7px;z-index:2}
+.detail-hero-price{position:absolute;bottom:16px;left:18px;z-index:2}
+.detail-hero-price .p{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:400;color:var(--white);line-height:1}
+.detail-hero-price .p small{font-size:15px;color:var(--muted);font-family:'Outfit',sans-serif}
+.detail-body{padding:22px}
+.detail-zone{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.detail-title{font-size:25px;font-weight:300;line-height:1.15}
+.detail-specs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:22px 0}
+.dspec{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:13px 10px;text-align:center}
+.dspec svg{width:19px;height:19px;stroke:var(--gold);stroke-width:1.5;fill:none;margin:0 auto 7px}
+.dspec .v{font-family:'Cormorant Garamond',serif;font-size:21px;color:var(--white);line-height:1}
+.dspec .l{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.detail-section-title{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:22px 0 10px}
+.detail-desc{font-size:13.5px;color:#C5C0B8;line-height:1.75}
+.detail-meta{margin-top:20px;display:flex;flex-direction:column;gap:1px;border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+.meta-row{display:flex;justify-content:space-between;padding:12px 15px;background:var(--surface2);font-size:12.5px}
+.meta-row span:first-child{color:var(--muted)}
+.meta-row span:last-child{color:var(--white)}
+.detail-footer{padding:16px 22px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:9px;background:var(--surface)}
+.wa-cta{display:flex;align-items:center;justify-content:center;gap:10px;padding:15px;background:var(--gold);color:var(--bg);font-size:13px;letter-spacing:1.5px;text-transform:uppercase;font-weight:500;border-radius:var(--r-sm);transition:all .3s var(--ease)}
+.wa-cta:hover{background:var(--gold-hover)}
+.wa-cta svg{width:18px;height:18px;fill:currentColor}
+.detail-footer .note{font-size:11px;color:var(--muted);text-align:center}
+.maps-cta{display:flex;align-items:center;justify-content:center;gap:9px;padding:13px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--white);transition:all .3s var(--ease)}
+.maps-cta:hover{border-color:var(--gold-border);color:var(--gold)}
+.maps-cta svg{width:16px;height:16px;stroke:currentColor;stroke-width:1.8;fill:none}
+/* Galería */
+.gallery-thumbs{display:flex;gap:8px;padding:12px 18px 0;flex-wrap:wrap}
+.gthumb{width:58px;height:44px;border-radius:6px;overflow:hidden;border:1.5px solid var(--border);cursor:pointer;opacity:.55;transition:all .25s var(--ease)}
+.gthumb.active,.gthumb:hover{opacity:1;border-color:var(--gold)}
+.gthumb img{width:100%;height:100%;object-fit:cover}
+
+/* ── MOBILE TOGGLE ── */
+.view-toggle{display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:1150;background:var(--gold);color:var(--bg);font-size:12px;letter-spacing:1.5px;text-transform:uppercase;font-weight:500;padding:13px 24px;border-radius:100px;box-shadow:0 8px 30px rgba(0,0,0,.5);align-items:center;gap:9px}
+.view-toggle svg{width:16px;height:16px;stroke:currentColor;stroke-width:2;fill:none}
+
+/* ── RESPONSIVE ── */
+@media(max-width:920px){
+  :root{--panel-w:340px}
+}
+@media(max-width:768px){
+  body{overflow:auto}
+  .layout{flex-direction:column;height:auto;padding-top:var(--header-h)}
+  .brand .tag{display:none}
+  .back-link span{display:none}
+  .back-link{padding:9px 11px}
+  .panel{width:100%;height:auto;border-right:none}
+  .map-wrap{position:fixed;inset:var(--header-h) 0 0;z-index:900;opacity:0;visibility:hidden;transition:opacity .35s}
+  .map-wrap.show-map{opacity:1;visibility:visible}
+  .list{max-height:none;overflow:visible}
+  .view-toggle{display:inline-flex}
+  .detail{width:100%;position:fixed;top:var(--header-h)}
+}
+
+/* ── LEGIBILIDAD EN PANTALLAS GRANDES ──
+   El panel y la tipografía crecen con el ancho de la pantalla para no quedar
+   diminutos en monitores grandes / alta resolución. */
+@media(min-width:769px){
+  :root{--panel-w:clamp(360px,27vw,540px);--header-h:clamp(66px,4.6vw,84px)}
+  .brand .logo{font-size:clamp(26px,1.9vw,36px)}
+  .brand .tag{font-size:clamp(10px,.72vw,13px)}
+  .back-link,.wa-header{font-size:clamp(12px,.85vw,15px)}
+  .panel-intro h1{font-size:clamp(27px,2.2vw,44px)}
+  .panel-intro p{font-size:clamp(12.5px,1vw,18px)}
+  .filter-block .filter-label{font-size:clamp(10px,.72vw,13px)}
+  .chip{font-size:clamp(12px,.88vw,16px)}
+  .search-box input{font-size:clamp(13.5px,1vw,18px)}
+  .result-count{font-size:clamp(12.5px,.95vw,17px)}
+  .card-zone{font-size:clamp(10.5px,.78vw,14px)}
+  .card-title{font-size:clamp(15px,1.15vw,21px)}
+  .card-price{font-size:clamp(20px,1.55vw,28px)}
+  .spec{font-size:clamp(12px,.9vw,16px)}
+  .badge{font-size:clamp(10px,.75vw,14px)}
+  .pin-tag{font-size:clamp(12px,.9vw,16px)}
+  .detail-title{font-size:clamp(25px,1.9vw,36px)}
+  .detail-desc{font-size:clamp(13.5px,1vw,18px)}
+  .detail-zone{font-size:clamp(11px,.8vw,15px)}
+  .dspec .v{font-size:clamp(21px,1.6vw,30px)}
+  .meta-row{font-size:clamp(12.5px,.95vw,17px)}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <a href="index.html" class="brand">
+    <span class="logo">Jose <b>Greco</b></span>
+    <span class="tag">Mapa de propiedades</span>
+  </a>
+  <div class="header-actions">
+    <a href="index.html" class="back-link">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      <span>Volver al sitio</span>
+    </a>
+    <a href="#" id="waHeader" class="wa-header" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M17.6 6.3A7.85 7.85 0 0 0 12 4a7.94 7.94 0 0 0-6.9 11.9L4 20l4.2-1.1A7.9 7.9 0 0 0 12 20a7.95 7.95 0 0 0 5.6-13.7ZM12 18.5a6.6 6.6 0 0 1-3.4-.9l-.24-.15-2.5.65.67-2.43-.16-.25A6.57 6.57 0 1 1 12 18.5Zm3.6-4.94c-.2-.1-1.17-.58-1.35-.64s-.31-.1-.44.1-.51.64-.62.77-.23.15-.43.05a5.4 5.4 0 0 1-2.7-2.36c-.2-.35.2-.32.58-1.08a.37.37 0 0 0 0-.35c0-.1-.44-1.07-.6-1.46s-.32-.33-.44-.34h-.38a.72.72 0 0 0-.52.24 2.2 2.2 0 0 0-.68 1.63A3.83 3.83 0 0 0 8.7 11.5a8.7 8.7 0 0 0 3.33 2.94c1.86.8 1.86.53 2.2.5a2 2 0 0 0 1.32-.93 1.62 1.62 0 0 0 .11-.93c-.05-.08-.18-.13-.38-.23Z"/></svg>
+      Consultar
+    </a>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- PANEL -->
+  <aside class="panel">
+    <div class="panel-intro">
+      <h1>Encontrá tu lugar en <em>Catamarca</em></h1>
+      <p>Explorá el mapa, elegí la zona que te gusta y descubrí las propiedades que tenemos para vos. Tocá cualquiera para ver fotos e información.</p>
+    </div>
+
+    <div class="filters">
+      <div class="filter-block">
+        <span class="filter-label">Operación</span>
+        <div class="chips" id="opChips">
+          <button class="chip active" data-op="todas">Todas</button>
+          <button class="chip" data-op="Venta">Venta</button>
+          <button class="chip" data-op="Alquiler">Alquiler</button>
+        </div>
+      </div>
+      <div class="filter-block">
+        <span class="filter-label">Zona</span>
+        <div class="chips" id="zoneChips"></div>
+      </div>
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="search" placeholder="Buscar por nombre o barrio…" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="result-bar">
+      <span class="result-count" id="resultCount"></span>
+      <button class="reset-btn" id="resetBtn">Limpiar filtros</button>
+    </div>
+
+    <ul class="list" id="list"></ul>
+  </aside>
+
+  <!-- MAP -->
+  <div class="map-wrap" id="mapWrap">
+    <div id="map"></div>
+  </div>
+
+  <!-- DETAIL -->
+  <div class="detail" id="detail">
+    <button class="detail-close" id="detailClose" aria-label="Cerrar">
+      <svg viewBox="0 0 24 24" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="detail-scroll" id="detailScroll"></div>
+  </div>
+
+</div>
+
+<button class="view-toggle" id="viewToggle">
+  <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+  <span id="viewToggleText">Ver mapa</span>
+</button>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+/* ============================================================
+   DATA — Cartera Jose Greco (San Fernando del Valle de Catamarca)
+   Coordenadas reales por zona + jitter para no superponer pines.
+   ============================================================ */
+var WHATSAPP = "5493834000000";
+
+var PROPS = [
+  { id:"pr1", titulo:"Casa 3 dorm c/ cochera doble", barrio:"B° Norte", operacion:"Venta",
+    precio:"USD 89.000", precioNum:89000, moneda:"USD", dorm:3, banos:2, m2:142, exclusiva:true,
+    lat:-28.4538, lng:-65.7802,
+    img:"https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1000&q=80",
+    desc:"Casa moderna en uno de los barrios más buscados de la Capital. Tres dormitorios amplios, living-comedor integrado con mucha luz natural, cochera cubierta para dos autos y patio con parrilla. Terminaciones de primera y lista para habitar." },
+
+  { id:"pr2", titulo:"Casa c/ pileta y quincho", barrio:"Valle Viejo", operacion:"Venta",
+    precio:"USD 95.000", precioNum:95000, moneda:"USD", dorm:3, banos:3, m2:165, exclusiva:true,
+    lat:-28.4718, lng:-65.7415,
+    img:"https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1000&q=80",
+    desc:"Espectacular casa con pileta y quincho independiente, ideal para disfrutar todo el año. Tres dormitorios, tres baños, cocina equipada y galería con vista al parque. Terreno de 600 m² parquizado en zona residencial tranquila." },
+
+  { id:"pr3", titulo:"Casa 3 dorm c/ gas natural", barrio:"Piedra Blanca", operacion:"Venta",
+    precio:"USD 78.000", precioNum:78000, moneda:"USD", dorm:3, banos:2, m2:118, exclusiva:true,
+    lat:-28.4548, lng:-65.7502,
+    img:"https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=1000&q=80",
+    desc:"Casa consolidada con gas natural, agua de red y cloacas. Tres dormitorios, dos baños completos, cocina-comedor y patio con espacio para cochera. Excelente opción para primera vivienda familiar, a minutos del centro." },
+
+  { id:"pr4", titulo:"Departamento 2 amb a estrenar", barrio:"Centro", operacion:"Venta",
+    precio:"USD 62.000", precioNum:62000, moneda:"USD", dorm:1, banos:1, m2:48, exclusiva:false,
+    lat:-28.4658, lng:-65.7742,
+    img:"https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1000&q=80",
+    desc:"Departamento a estrenar en pleno centro, a pasos de todo. Un dormitorio, cocina integrada, balcón y muy buena ventilación. Ideal para inversión con renta o primera vivienda de un profesional." },
+
+  { id:"pr5", titulo:"Casa 2 dorm c/ patio", barrio:"Choya", operacion:"Venta",
+    precio:"USD 71.000", precioNum:71000, moneda:"USD", dorm:2, banos:1, m2:96, exclusiva:false,
+    lat:-28.4035, lng:-65.7618,
+    img:"https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=1000&q=80",
+    desc:"Casa acogedora con patio amplio en zona de barrios tranquilos. Dos dormitorios, baño completo, living-comedor y cocina. Espacio para ampliar o sumar cochera. Entorno familiar y buena conectividad." },
+
+  { id:"pr6", titulo:"Terreno 400 m² c/ escritura", barrio:"Valle Viejo", operacion:"Venta",
+    precio:"USD 60.000", precioNum:60000, moneda:"USD", dorm:0, banos:0, m2:400, exclusiva:true,
+    lat:-28.4742, lng:-65.7448,
+    img:"https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=1000&q=80",
+    desc:"Lote de 400 m² con escritura inmediata y todos los servicios en zona de expansión residencial. Ideal para construir tu casa a medida. Frente amplio, apto crédito, en un barrio en pleno crecimiento." },
+
+  { id:"pr7", titulo:"Local comercial c/ vidriera", barrio:"Centro", operacion:"Alquiler",
+    precio:"$520.000", precioNum:520000, moneda:"ARS", dorm:0, banos:1, m2:95, exclusiva:true,
+    lat:-28.4720, lng:-65.7770,
+    img:"https://images.unsplash.com/photo-1497366216548-37526070297c?w=1000&q=80",
+    desc:"Local comercial sobre calle de alto tránsito, con gran vidriera a la calle, salida de humos habilitada y baño. 95 m² ideales para gastronomía o comercio. Excelente visibilidad en el corazón comercial de la ciudad." },
+
+  { id:"pr8", titulo:"Departamento 2 dorm c/ balcón", barrio:"B° Norte", operacion:"Alquiler",
+    precio:"$420.000", precioNum:420000, moneda:"ARS", dorm:2, banos:1, m2:68, exclusiva:false,
+    lat:-28.4600, lng:-65.7875,
+    img:"https://images.unsplash.com/photo-1600573472550-8090b5e0745e?w=1000&q=80",
+    desc:"Departamento luminoso de dos dormitorios con balcón y cochera. Cocina integrada, ventilación cruzada y muy buen estado general. En un barrio residencial seguro y bien ubicado. Se solicita garantía o seguro de caución." },
+
+  { id:"pr9", titulo:"Departamento 1 amb amoblado", barrio:"Centro", operacion:"Alquiler",
+    precio:"$350.000", precioNum:350000, moneda:"ARS", dorm:1, banos:1, m2:34, exclusiva:false,
+    lat:-28.4695, lng:-65.7848,
+    img:"https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1000&q=80",
+    desc:"Monoambiente amoblado y equipado, listo para entrar a vivir. Incluye muebles, cocina y baño completo. Ideal para profesionales o estudiantes. Ubicación inmejorable, a pasos de la peatonal y el transporte." }
+];
+
+/* Galerías: todas las fotos de cada propiedad. La [0] es la principal (p.img). */
+var GALERIAS = {
+  pr1:["https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1000&q=80","https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1000&q=80","https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=1000&q=80"],
+  pr2:["https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1000&q=80","https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1000&q=80","https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1000&q=80"],
+  pr3:["https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=1000&q=80","https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=1000&q=80","https://images.unsplash.com/photo-1600573472550-8090b5e0745e?w=1000&q=80"],
+  pr4:["https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1000&q=80","https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=1000&q=80","https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1000&q=80"],
+  pr5:["https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=1000&q=80","https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1000&q=80","https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1000&q=80"],
+  pr6:["https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=1000&q=80","https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1000&q=80"],
+  pr7:["https://images.unsplash.com/photo-1497366216548-37526070297c?w=1000&q=80","https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1000&q=80","https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1000&q=80"],
+  pr8:["https://images.unsplash.com/photo-1600573472550-8090b5e0745e?w=1000&q=80","https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1000&q=80","https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=1000&q=80"],
+  pr9:["https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1000&q=80","https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=1000&q=80","https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1000&q=80"]
+};
+
+/* ============================================================
+   Helpers
+   ============================================================ */
+function galeriaDe(p){ return (GALERIAS[p.id] && GALERIAS[p.id].length) ? GALERIAS[p.id] : [p.img]; }
+function mapsLink(p){ return "https://www.google.com/maps/search/?api=1&query="+p.lat+","+p.lng; }
+function fmtPrecio(p, largo){
+  if(p.moneda === "USD") return { main:p.precio, suf: largo ? "" : "" };
+  return { main:p.precio, suf:"/mes" };
+}
+function precioCorto(p){
+  var k = Math.round(p.precioNum/1000);
+  return p.moneda === "USD" ? ("USD "+k+"k") : ("$"+k+"k");
+}
+function specSvg(tipo){
+  if(tipo==="dorm") return '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20v-6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v6"/><path d="M2 14V8a2 2 0 0 1 2-2h6v6"/><path d="M14 12V6h4a2 2 0 0 1 2 2v4"/><line x1="2" y1="20" x2="2" y2="17"/><line x1="22" y1="20" x2="22" y2="17"/></svg>';
+  if(tipo==="banos") return '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12V6a2 2 0 0 1 2-2 2 2 0 0 1 2 2"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M4 12v3a5 5 0 0 0 5 5h6a5 5 0 0 0 5-5v-3"/><line x1="7" y1="20" x2="6" y2="22"/><line x1="17" y1="20" x2="18" y2="22"/></svg>';
+  return '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M9 3v18M3 9h18" opacity=".5"/></svg>';
+}
+function waLink(text){
+  return "https://wa.me/"+WHATSAPP+"?text="+encodeURIComponent(text);
+}
+
+/* ============================================================
+   Map
+   ============================================================ */
+var map = L.map('map', { zoomControl:true, scrollWheelZoom:true, attributionControl:true })
+  .setView([-28.462, -65.771], 13);
+map.zoomControl.setPosition('topright');
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  subdomains:'abcd', maxZoom:19
+}).addTo(map);
+
+var markers = {};      // id -> L.marker
+PROPS.forEach(function(p){
+  var icon = L.divIcon({
+    className:'',
+    html:'<div class="pin op-'+p.operacion.toLowerCase()+'" data-id="'+p.id+'"><div class="pin-tag">'+precioCorto(p)+'</div></div>',
+    iconSize:[0,0], iconAnchor:[0,0]
+  });
+  var m = L.marker([p.lat, p.lng], { icon:icon, riseOnHover:true }).addTo(map);
+  m.on('click', function(){ openDetail(p.id); });
+  markers[p.id] = m;
+});
+
+/* ============================================================
+   State + Filtering
+   ============================================================ */
+var state = { op:"todas", zona:"todas", q:"" };
+var ZONAS = PROPS.reduce(function(acc,p){ if(acc.indexOf(p.barrio)===-1) acc.push(p.barrio); return acc; }, []);
+
+// Build zone chips
+var zoneChips = document.getElementById('zoneChips');
+zoneChips.appendChild(makeChip("todas","Todas",true,"zona"));
+ZONAS.forEach(function(z){ zoneChips.appendChild(makeChip(z,z,false,"zona")); });
+
+function makeChip(val,label,active,kind){
+  var b=document.createElement('button');
+  b.className='chip'+(active?' active':'');
+  b.textContent=label;
+  b.dataset.val=val; b.dataset.kind=kind;
+  b.addEventListener('click',function(){
+    state[kind]=val;
+    var parent=b.parentElement;
+    parent.querySelectorAll('.chip').forEach(function(c){c.classList.remove('active')});
+    b.classList.add('active');
+    apply();
+  });
+  return b;
+}
+
+document.getElementById('opChips').querySelectorAll('.chip').forEach(function(c){
+  c.addEventListener('click',function(){
+    state.op=c.dataset.op;
+    document.getElementById('opChips').querySelectorAll('.chip').forEach(function(x){x.classList.remove('active')});
+    c.classList.add('active');
+    apply();
+  });
+});
+
+var searchEl=document.getElementById('search');
+searchEl.addEventListener('input',function(){ state.q=this.value.trim().toLowerCase(); apply(); });
+
+document.getElementById('resetBtn').addEventListener('click',function(){
+  state={op:"todas",zona:"todas",q:""};
+  searchEl.value="";
+  document.querySelectorAll('.chip').forEach(function(c){
+    c.classList.toggle('active', c.dataset.val==="todas" || c.dataset.op==="todas");
+  });
+  apply();
+});
+
+var RE_DIACRITICOS = new RegExp("[\\u0300-\\u036f]", "g");
+function normaliza(s){ return s.toLowerCase().normalize("NFD").replace(RE_DIACRITICOS,""); }
+
+function matches(p){
+  if(state.op!=="todas" && p.operacion!==state.op) return false;
+  if(state.zona!=="todas" && p.barrio!==state.zona) return false;
+  if(state.q){
+    var q=normaliza(state.q);
+    if(normaliza(p.titulo).indexOf(q)===-1 && normaliza(p.barrio).indexOf(q)===-1) return false;
+  }
+  return true;
+}
+
+var listEl=document.getElementById('list');
+var countEl=document.getElementById('resultCount');
+var resetEl=document.getElementById('resetBtn');
+
+function apply(){
+  var visibles=PROPS.filter(matches);
+
+  // list
+  if(visibles.length===0){
+    listEl.innerHTML='<div class="list-empty"><div class="em-icon">◇</div><p>No hay propiedades con esos filtros</p><p class="sub">Probá con otra zona o sacá algún filtro.</p></div>';
+  } else {
+    listEl.innerHTML=visibles.map(cardHTML).join('');
+    listEl.querySelectorAll('.card').forEach(function(card){
+      var id=card.dataset.id;
+      card.addEventListener('click',function(){ openDetail(id); });
+      card.addEventListener('mouseenter',function(){ highlightPin(id,true); });
+      card.addEventListener('mouseleave',function(){ highlightPin(id,false); });
+    });
+  }
+
+  // count
+  countEl.innerHTML='<b>'+visibles.length+'</b> '+(visibles.length===1?'propiedad':'propiedades')+(state.op!=="todas"?' en '+state.op.toLowerCase():'');
+  var filtroActivo = state.op!=="todas"||state.zona!=="todas"||state.q!=="";
+  resetEl.classList.toggle('show', filtroActivo);
+
+  // markers show/hide + fit
+  var group=[];
+  PROPS.forEach(function(p){
+    var vis=matches(p);
+    var el=markers[p.id].getElement();
+    if(markers[p.id]._icon) markers[p.id]._icon.style.display = vis ? '' : 'none';
+    if(vis) group.push(markers[p.id].getLatLng());
+  });
+  if(group.length){
+    map.flyToBounds(L.latLngBounds(group).pad(0.35), { duration:.6, maxZoom:15 });
+  }
+}
+
+function cardHTML(p){
+  var pr=fmtPrecio(p,false);
+  return ''+
+  '<li class="card" data-id="'+p.id+'">'+
+    '<div class="card-img">'+
+      '<img src="'+p.img+'" alt="'+p.titulo+'" loading="lazy">'+
+      '<div class="card-badges">'+
+        '<span class="badge op-'+p.operacion.toLowerCase()+'">'+p.operacion+'</span>'+
+        (p.exclusiva?'<span class="badge excl">Exclusiva</span>':'')+
+      '</div>'+
+      '<div class="card-price">'+pr.main+(pr.suf?'<small>'+pr.suf+'</small>':'')+'</div>'+
+    '</div>'+
+    '<div class="card-body">'+
+      '<div class="card-zone">'+p.barrio+' · Catamarca</div>'+
+      '<div class="card-title">'+p.titulo+'</div>'+
+      '<div class="card-specs">'+
+        (p.dorm>0?'<span class="spec">'+specSvg("dorm")+p.dorm+' dorm</span>':'')+
+        (p.banos>0?'<span class="spec">'+specSvg("banos")+p.banos+' baño'+(p.banos>1?'s':'')+'</span>':'')+
+        '<span class="spec">'+specSvg("m2")+p.m2+' m²</span>'+
+      '</div>'+
+    '</div>'+
+  '</li>';
+}
+
+function highlightPin(id,on){
+  var m=markers[id];
+  if(!m||!m._icon) return;
+  var pin=m._icon.querySelector('.pin');
+  if(pin) pin.classList.toggle('active',on);
+}
+
+/* ============================================================
+   Detail panel
+   ============================================================ */
+var detail=document.getElementById('detail');
+var detailScroll=document.getElementById('detailScroll');
+var activeId=null;
+
+function openDetail(id){
+  var p=PROPS.find(function(x){return x.id===id});
+  if(!p) return;
+
+  // reset previous highlight, set new
+  if(activeId) highlightPin(activeId,false);
+  activeId=id;
+  highlightPin(id,true);
+
+  // sync list highlight
+  listEl.querySelectorAll('.card').forEach(function(c){ c.classList.toggle('hl', c.dataset.id===id); });
+
+  var pr=fmtPrecio(p,true);
+  var galeria=galeriaDe(p);
+  var msg="Hola! Me interesa la propiedad \""+p.titulo+"\" en "+p.barrio+" ("+p.precio+(p.moneda==="ARS"?"/mes":"")+"). ¿Podemos coordinar una visita?";
+
+  detailScroll.innerHTML=''+
+    '<div class="detail-hero">'+
+      '<img id="heroImg" src="'+galeria[0]+'" alt="'+p.titulo+'">'+
+      '<div class="detail-hero-badges">'+
+        '<span class="badge op-'+p.operacion.toLowerCase()+'">'+p.operacion+'</span>'+
+        (p.exclusiva?'<span class="badge excl">Exclusiva</span>':'')+
+      '</div>'+
+      '<div class="detail-hero-price"><div class="p">'+p.precio+(pr.suf?'<small>'+pr.suf+'</small>':'')+'</div></div>'+
+    '</div>'+
+    (galeria.length>1
+      ? '<div class="gallery-thumbs" id="gthumbs">'+galeria.map(function(u,idx){
+          return '<div class="gthumb'+(idx===0?' active':'')+'" data-src="'+u+'"><img src="'+u+'" alt="" loading="lazy"></div>';
+        }).join('')+'</div>'
+      : '')+
+    '<div class="detail-body">'+
+      '<div class="detail-zone">'+p.barrio+' · Catamarca</div>'+
+      '<div class="detail-title">'+p.titulo+'</div>'+
+      '<div class="detail-specs">'+
+        '<div class="dspec">'+specSvg("dorm")+'<div class="v">'+(p.dorm>0?p.dorm:'—')+'</div><div class="l">Dormitorios</div></div>'+
+        '<div class="dspec">'+specSvg("banos")+'<div class="v">'+(p.banos>0?p.banos:'—')+'</div><div class="l">Baños</div></div>'+
+        '<div class="dspec">'+specSvg("m2")+'<div class="v">'+p.m2+'</div><div class="l">m²</div></div>'+
+      '</div>'+
+      '<div class="detail-section-title">Descripción</div>'+
+      '<p class="detail-desc">'+p.desc+'</p>'+
+      '<div class="detail-meta">'+
+        '<div class="meta-row"><span>Operación</span><span>'+p.operacion+'</span></div>'+
+        '<div class="meta-row"><span>Zona</span><span>'+p.barrio+'</span></div>'+
+        '<div class="meta-row"><span>Superficie</span><span>'+p.m2+' m²</span></div>'+
+        (p.exclusiva?'<div class="meta-row"><span>Publicación</span><span>Exclusiva Jose Greco</span></div>':'')+
+      '</div>'+
+    '</div>';
+
+  // footer (fixed, outside scroll)
+  var oldFooter=detail.querySelector('.detail-footer');
+  if(oldFooter) oldFooter.remove();
+  var footer=document.createElement('div');
+  footer.className='detail-footer';
+  footer.innerHTML=''+
+    '<a class="wa-cta" target="_blank" rel="noopener" href="'+waLink(msg)+'">'+
+      '<svg viewBox="0 0 24 24"><path d="M17.6 6.3A7.85 7.85 0 0 0 12 4a7.94 7.94 0 0 0-6.9 11.9L4 20l4.2-1.1A7.9 7.9 0 0 0 12 20a7.95 7.95 0 0 0 5.6-13.7ZM12 18.5a6.6 6.6 0 0 1-3.4-.9l-.24-.15-2.5.65.67-2.43-.16-.25A6.57 6.57 0 1 1 12 18.5Zm3.6-4.94c-.2-.1-1.17-.58-1.35-.64s-.31-.1-.44.1-.51.64-.62.77-.23.15-.43.05a5.4 5.4 0 0 1-2.7-2.36c-.2-.35.2-.32.58-1.08a.37.37 0 0 0 0-.35c0-.1-.44-1.07-.6-1.46s-.32-.33-.44-.34h-.38a.72.72 0 0 0-.52.24 2.2 2.2 0 0 0-.68 1.63A3.83 3.83 0 0 0 8.7 11.5a8.7 8.7 0 0 0 3.33 2.94c1.86.8 1.86.53 2.2.5a2 2 0 0 0 1.32-.93 1.62 1.62 0 0 0 .11-.93c-.05-.08-.18-.13-.38-.23Z"/></svg>'+
+      'Consultar por esta propiedad'+
+    '</a>'+
+    '<a class="maps-cta" target="_blank" rel="noopener" href="'+mapsLink(p)+'">'+
+      '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>'+
+      'Cómo llegar'+
+    '</a>'+
+    '<div class="note">Te responde un asesor de Jose Greco al instante.</div>';
+  detail.appendChild(footer);
+
+  // Miniaturas: cambiar la foto principal
+  var gthumbs=document.getElementById('gthumbs');
+  if(gthumbs){
+    gthumbs.querySelectorAll('.gthumb').forEach(function(t){
+      t.addEventListener('click',function(){
+        var hero=document.getElementById('heroImg');
+        if(hero) hero.src=t.dataset.src;
+        gthumbs.querySelectorAll('.gthumb').forEach(function(x){x.classList.remove('active')});
+        t.classList.add('active');
+      });
+    });
+  }
+
+  detail.classList.add('open');
+
+  // Deep-link: la URL refleja la propiedad abierta → se puede compartir el link directo.
+  try{ history.replaceState(null,'','?p='+id); }catch(e){}
+
+  // center map on the property
+  map.flyTo([p.lat, p.lng], Math.max(map.getZoom(),15), { duration:.6 });
+  if(window.innerWidth<=768) showMap(true);
+}
+
+function closeDetail(){
+  detail.classList.remove('open');
+  if(activeId) highlightPin(activeId,false);
+  listEl.querySelectorAll('.card').forEach(function(c){ c.classList.remove('hl'); });
+  activeId=null;
+  try{ history.replaceState(null,'',location.pathname); }catch(e){}
+}
+document.getElementById('detailClose').addEventListener('click',closeDetail);
+document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeDetail(); });
+
+/* Header WhatsApp generic */
+document.getElementById('waHeader').href=waLink("Hola! Estuve viendo el mapa de propiedades de Jose Greco y quería hacer una consulta.");
+
+/* ============================================================
+   Mobile map toggle
+   ============================================================ */
+var mapWrap=document.getElementById('mapWrap');
+var toggle=document.getElementById('viewToggle');
+var toggleText=document.getElementById('viewToggleText');
+var mapVisible=false;
+function showMap(v){
+  mapVisible=v;
+  mapWrap.classList.toggle('show-map',v);
+  toggleText.textContent=v?'Ver lista':'Ver mapa';
+  if(v) setTimeout(function(){ map.invalidateSize(); },350);
+}
+toggle.addEventListener('click',function(){ showMap(!mapVisible); });
+
+/* ============================================================
+   Init
+   ============================================================ */
+apply();
+setTimeout(function(){ map.invalidateSize(); },300);
+
+// Si el link trae ?p=<id>, abrir esa propiedad directo (link compartible).
+(function(){
+  var pid=new URLSearchParams(location.search).get('p');
+  if(pid && PROPS.some(function(p){return p.id===pid})){
+    setTimeout(function(){ openDetail(pid); }, 500);
+  }
+})();
+</script>
+</body>
+</html>

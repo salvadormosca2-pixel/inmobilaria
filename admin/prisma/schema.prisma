@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Property {
+  id          Int      @id @default(autoincrement())
+  titulo      String
+  descripcion String
+  precio      Float
+  categoria   String   // casa, departamento, terreno, local
+  operacion   String   // venta, alquiler, obra-nueva
+  estado      String   @default("disponible") // disponible, reservada, vendida
+  dormitorios Int      @default(0)
+  banos       Int      @default(0)
+  superficie  Float    @default(0)
+  ubicacion   String
+  imagenes    String   @default("[]") // JSON array of URLs
+  etiqueta    String   @default("Nueva")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Lead {
+  id           Int      @id @default(autoincrement())
+  nombre       String
+  telefono     String
+  resumenIA    String   @default("")
+  estado       String   @default("nuevo") // nuevo, contactado, en_seguimiento, cerrado, descartado
+  atendido     Boolean  @default(false)
+  notaVendedor String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
