@@ -12,6 +12,8 @@ Asistente de IA que atiende WhatsApp 24/7 para la inmobiliaria **José Greco** (
 |---|---|
 | `CEREBRO-system-message.md` | El system message completo (ya viene embebido en el workflow). Editalo acá y volvé a pegarlo si querés afinarlo. |
 | `workflow-cero-fugas.json` | El workflow importable a n8n. |
+| `docker-compose.yml` | Stack self-hosted: n8n (main + worker) + Redis + Postgres. |
+| `.env.example` | Variables del stack Docker. Copialo a `.env` y completalo. |
 | `README.md` | Esto. |
 
 Endpoints nuevos agregados a la app `admin/` (los "llamados" que usa la IA):
@@ -97,15 +99,32 @@ N8N_SHARED_SECRET="un-secreto-largo-y-random"
 - Asigná ese Agent Bot al **inbox** de WhatsApp.
 - Creá un **custom attribute** de conversación llamado `ia_activa` (tipo checkbox/boolean). El bot solo responde si NO está en `false`.
 
-### 4. n8n
-1. **Import** → subí `workflow-cero-fugas.json`.
-2. Abrí el nodo **OpenAI (cerebro)** y elegí/creá la credencial de OpenAI (modelo `gpt-4o`; podés cambiarlo).
-3. Abrí el nodo **Contexto** y editá dos valores:
-   - `adminUrl` → la URL pública de la app (sin `/` final).
-   - `secret` → el mismo valor de `N8N_SHARED_SECRET`.
-4. **Guardá y activá** el workflow. Copiá la URL del webhook **de producción** y pegala en el Agent Bot (paso 3).
+### 4. Levantar n8n + Redis + Postgres (Docker)
 
-### 5. Takeover (el vendedor toma el control)
+El bot corre sobre un stack self-hosted: **n8n (main + worker en queue mode) + Redis + Postgres**. Redis hace dos cosas: la **cola de ejecuciones** de n8n y la **memoria de las conversaciones** del bot (así no se pierden si n8n reinicia).
+
+```bash
+cd n8n
+cp .env.example .env          # completá POSTGRES_PASSWORD, N8N_ENCRYPTION_KEY, WEBHOOK_URL
+docker compose up -d          # levanta postgres, redis, n8n y n8n-worker
+```
+
+- Generá la clave de cifrado: `openssl rand -hex 32` (va en `N8N_ENCRYPTION_KEY`).
+- `WEBHOOK_URL` tiene que ser la **URL pública** por la que Chatwoot llega a n8n. En local usá un túnel (Cloudflare Tunnel / ngrok); en server, tu dominio (ej. `https://n8n.josegreco.com.ar`).
+- Entrá a `http://localhost:5678` y creá tu usuario **owner**.
+
+> La Postgres de este compose es **solo de n8n** (guarda workflows/credenciales/ejecuciones). La base del CRM sigue siendo **Neon**, aparte.
+
+### 5. Importar y configurar el workflow
+1. En n8n: **Import from File** → subí `workflow-cero-fugas.json`.
+2. Nodo **OpenAI (cerebro)** → elegí/creá la credencial de OpenAI (modelo `gpt-4o`, configurable).
+3. Nodo **Memoria (Redis)** → creá una credencial **Redis** con host `redis`, puerto `6379` (así se llama el servicio en el compose).
+4. Nodo **Contexto** → editá dos valores:
+   - `adminUrl` → la URL pública de la app (sin `/` final).
+   - `secret` → el mismo valor de `N8N_SHARED_SECRET` del `.env` de la app.
+5. **Guardá y activá** el workflow. Copiá la URL del webhook **de producción** y pegala en el Agent Bot (paso 3).
+
+### 6. Takeover (el vendedor toma el control)
 - Cuando la IA deriva un caliente, `derivar_a_vendedor` pone `ia_activa=false` y el bot deja de responder esa conversación.
 - Si un vendedor quiere tomar una charla manualmente, que ponga `ia_activa=false` en la conversación (o desde un botón/macro de Chatwoot). Para devolvérsela al bot, `ia_activa=true`.
 
@@ -145,6 +164,6 @@ curl -X POST "$ADMIN/api/whatsapp/send-property" -H "Content-Type: application/j
 
 - **Base de datos:** el CRM viene con SQLite. En Vercel el filesystem es efímero — para persistir, migrá `DATABASE_URL` a Postgres (Neon/Supabase). Prisma soporta ambos.
 - **Números de Argentina:** WhatsApp usa `54 9 <área> <línea>`. `normalizarNumero()` arma ese formato automáticamente. Si un número te falla, revisá que el área no lleve el `0` ni el `15`.
-- **Memoria:** el workflow usa memoria en buffer por conversación (simple, sirve en cloud y self-host). Para producción de alto volumen, cambiá el nodo de memoria a **Postgres Chat Memory** con el mismo `sessionKey`.
+- **Memoria:** el workflow usa **Redis Chat Memory** (nodo *Memoria (Redis)*), con `sessionKey` = id de conversación. Persiste entre reinicios y la comparten los workers. El Redis del compose sirve para esto y para la cola de n8n.
 - **Modelo:** el nodo usa `gpt-4o`. Podés bajar a `gpt-4o-mini` para abaratar, o subir de modelo para más calidad.
 - **System message:** vive completo en `CEREBRO-system-message.md` y ya está embebido en el nodo AI Agent. Si lo editás, volvé a pegarlo en el campo *System Message* del nodo.

@@ -1,1 +1,6 @@
 .vercel
+
+# Secretos: ignora cualquier .env pero deja el ejemplo
+.env
+.env.*
+!.env.example

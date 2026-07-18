@@ -170,9 +170,9 @@
         "sessionKey": "={{ $('Contexto').item.json.conversationId }}",
         "contextWindowLength": 20
       },
-      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
-      "typeVersion": 1.3,
-      "name": "Memoria por conversación",
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.5,
+      "name": "Memoria (Redis)",
       "position": [
         720,
         540
@@ -491,7 +491,7 @@
         ]
       ]
     },
-    "Memoria por conversación": {
+    "Memoria (Redis)": {
       "ai_memory": [
         [
           {

@@ -1,0 +1,106 @@
+# Stack self-hosted del Cerebro IA:
+#   - n8n (main)   → editor + webhooks (la API que llama Chatwoot)
+#   - n8n-worker   → ejecuta los workflows (queue mode, escala aparte del main)
+#   - redis        → cola de ejecuciones + memoria de conversaciones del bot
+#   - postgres     → base propia de n8n (workflows, credenciales, ejecuciones)
+#
+# Uso:
+#   1. cp .env.example .env   y completá los valores (ver .env.example)
+#   2. docker compose up -d
+#   3. Entrá a http://localhost:5678 y creá tu usuario owner
+#
+# La base del CRM (Neon) es OTRA cosa: esta postgres es SOLO para n8n.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: n8n
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: n8n
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U n8n -d n8n"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  n8n:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "5678:5678"
+    environment:
+      # --- Base de n8n ---
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      # --- Queue mode (usa Redis) ---
+      - EXECUTIONS_MODE=queue
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      # --- Seguridad / acceso ---
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_HOST=${N8N_HOST}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=${N8N_PROTOCOL}
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      - GENERIC_TIMEZONE=America/Argentina/Catamarca
+      - TZ=America/Argentina/Catamarca
+      # Permite que las expresiones lean variables (no obligatorio)
+      - N8N_RUNNERS_ENABLED=true
+    volumes:
+      - n8ndata:/home/node/.n8n
+
+  n8n-worker:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    command: worker
+    depends_on:
+      n8n:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      - EXECUTIONS_MODE=queue
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - GENERIC_TIMEZONE=America/Argentina/Catamarca
+      - TZ=America/Argentina/Catamarca
+      - N8N_RUNNERS_ENABLED=true
+
+volumes:
+  pgdata:
+  redisdata:
+  n8ndata:
